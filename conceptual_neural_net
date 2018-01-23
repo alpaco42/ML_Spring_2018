@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 class Neuron:
 
@@ -10,9 +11,12 @@ class Neuron:
     def sigmoid(number):
         return 1 / float((1 + np.exp(-1 * number)))
 
-    def __init__(self, inputs, weights, layer):
+    def __init__(self, inputs, weights = False, layer):
         self.inputs = inputs
-        self.weights = weights
+        if not weights:
+            self.weights = np.array([random.random() - 0.5 for i in range(len(inputs))])
+        else:
+            self.weights = weights
         if layer == "h":
             self.act_func = Neuron.relu
         elif layer == "o":
@@ -29,4 +33,19 @@ class Neuron:
 
 
 
-    def derivative(self):
+    # def derivative(self):
+
+class NeuralNet:
+
+    def __init__(self, X, y, network_structure):
+        """network_structure should be a list whose length is the number of hidden layers
+        and whose ith entry is the desired number of neurons in the ith hidden layer
+        as of now, this can only handle X = a single datapoint"""
+
+        self.network = [[Neuron(inputs = X) for i in range(network_structure[0])]]
+        for layer in network_structure[1:]:
+            self.network.append([Neuron(inputs = self.network[-1]) for i in range(layer)])
+        self.network.append([Neuron(inputs = self.network[-1], layer = "o")])
+
+    def make_prediction(self):
+        return self.network[-1][0].recursive_output_calc()
