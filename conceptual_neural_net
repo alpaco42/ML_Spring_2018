@@ -1,0 +1,32 @@
+import numpy as np
+
+class Neuron:
+
+    @staticmethod
+    def relu(number):
+        return max(number, 0)
+
+    @staticmethod
+    def sigmoid(number):
+        return 1 / float((1 + np.exp(-1 * number)))
+
+    def __init__(self, inputs, weights, layer):
+        self.inputs = inputs
+        self.weights = weights
+        if layer == "h":
+            self.act_func = Neuron.relu
+        elif layer == "o":
+            self.act_func = Neuron.sigmoid
+
+    def recursive_output_calc(self, inputs = self.inputs):
+        while True:
+            try:
+                input_to_act_func = self.weights.dot(inputs)
+                return self.act_func(input_to_act_func)
+            except TypeError:
+                new_inputs = [neuron.recursive_output_calc() for neuron in self.inputs]
+                return self.recursive_output_calc(inputs = new_inputs)
+
+
+
+    def derivative(self):
