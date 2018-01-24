@@ -1,19 +1,16 @@
+from __future__ import division
 import numpy as np
 import random
 
 class Neuron:
 
     @staticmethod
-    def relu(number):
-        try:
-            return max(number, 0)
-        except ValueError:
-            print number
-            raise RuntimeError("something wrong")
+    def relu(array):
+        return np.maximum(array, 0)
 
     @staticmethod
-    def sigmoid(number):
-        return 1 / float((1 + np.exp(-1 * number)))
+    def sigmoid(array):
+        return 1 / (1 + np.exp(-1 * array))
 
     def __init__(self, inputs, weights = False, layer = "h"):
         self.inputs = inputs
@@ -30,15 +27,21 @@ class Neuron:
     def recursive_output_calc(self, inputs = False): #doesn't like that I'm using a field from the instance in here...
         try:
             try:
+                # print 0, inputs
                 inputs.transpose()
                 input_to_act_func = self.weights.dot(inputs.transpose())
             except AttributeError:
-                # print self,self.inputs, "attribute"
+                # print 1, self.inputs
                 input_to_act_func = self.weights.dot(self.inputs.transpose())
-            return self.act_func(float(input_to_act_func))
-        except TypeError:
-            # print self, self.inputs, "type"
-            new_inputs = np.array([[neuron.recursive_output_calc() for neuron in self.inputs[0]]])
+            return self.act_func(input_to_act_func)
+        except TypeError: #this identifies if the inputs are neurons or actual numbers
+            # print 2, inputs, self
+            try:
+                inputs.transpose()
+                new_inputs = np.array([[neuron.recursive_output_calc() for neuron in inputs[0]]])
+            except AttributeError:
+                # print 3, self.inputs
+                new_inputs = np.array([[neuron.recursive_output_calc() for neuron in self.inputs[0]]])
             return self.recursive_output_calc(inputs = new_inputs)
 
 
