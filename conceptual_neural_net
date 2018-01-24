@@ -15,9 +15,13 @@ class Neuron:
     def sigmoid(number):
         return 1 / float((1 + np.exp(-1 * number)))
 
-    def __init__(self, inputs, layer = "h"):
+    def __init__(self, inputs, weights = False, layer = "h"):
         self.inputs = inputs
-        self.weights = np.array([[random.random() - 0.5 for i in range(inputs.shape[1])]])
+        try:
+            len(weights)
+            self.weights = weights
+        except TypeError:
+            self.weights = np.array([[random.random() - 0.5 for i in range(inputs.shape[1])]])
         if layer == "h":
             self.act_func = Neuron.relu
         elif layer == "o":
@@ -26,14 +30,14 @@ class Neuron:
     def recursive_output_calc(self, inputs = False): #doesn't like that I'm using a field from the instance in here...
         try:
             try:
-                len(inputs)
+                inputs.transpose()
                 input_to_act_func = self.weights.dot(inputs.transpose())
-            except TypeError:
-                # print self,self.inputs, "type"
+            except AttributeError:
+                # print self,self.inputs, "attribute"
                 input_to_act_func = self.weights.dot(self.inputs.transpose())
             return self.act_func(float(input_to_act_func))
         except TypeError:
-            # print self, self.inputs, "attribute"
+            # print self, self.inputs, "type"
             new_inputs = np.array([[neuron.recursive_output_calc() for neuron in self.inputs[0]]])
             return self.recursive_output_calc(inputs = new_inputs)
 
