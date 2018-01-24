@@ -5,31 +5,37 @@ class Neuron:
 
     @staticmethod
     def relu(number):
-        return max(number, 0)
+        try:
+            return max(number, 0)
+        except ValueError:
+            print number
+            raise RuntimeError("something wrong")
 
     @staticmethod
     def sigmoid(number):
         return 1 / float((1 + np.exp(-1 * number)))
 
-    def __init__(self, inputs, weights = False, layer):
+    def __init__(self, inputs, layer = "h"):
         self.inputs = inputs
-        if not weights:
-            self.weights = np.array([random.random() - 0.5 for i in range(len(inputs))])
-        else:
-            self.weights = weights
+        self.weights = np.array([[random.random() - 0.5 for i in range(inputs.shape[1])]])
         if layer == "h":
             self.act_func = Neuron.relu
         elif layer == "o":
             self.act_func = Neuron.sigmoid
 
-    def recursive_output_calc(self, inputs = self.inputs):
-        while True:
+    def recursive_output_calc(self, inputs = False): #doesn't like that I'm using a field from the instance in here...
+        try:
             try:
-                input_to_act_func = self.weights.dot(inputs)
-                return self.act_func(input_to_act_func)
+                len(inputs)
+                input_to_act_func = self.weights.dot(inputs.transpose())
             except TypeError:
-                new_inputs = [neuron.recursive_output_calc() for neuron in self.inputs]
-                return self.recursive_output_calc(inputs = new_inputs)
+                # print self,self.inputs, "type"
+                input_to_act_func = self.weights.dot(self.inputs.transpose())
+            return self.act_func(float(input_to_act_func))
+        except TypeError:
+            # print self, self.inputs, "attribute"
+            new_inputs = np.array([[neuron.recursive_output_calc() for neuron in self.inputs[0]]])
+            return self.recursive_output_calc(inputs = new_inputs)
 
 
 
@@ -40,12 +46,12 @@ class NeuralNet:
     def __init__(self, X, y, network_structure):
         """network_structure should be a list whose length is the number of hidden layers
         and whose ith entry is the desired number of neurons in the ith hidden layer
-        as of now, this can only handle X = a single datapoint"""
+        as of now, this only works for X = single datapoint"""
 
         self.network = [[Neuron(inputs = X) for i in range(network_structure[0])]]
         for layer in network_structure[1:]:
-            self.network.append([Neuron(inputs = self.network[-1]) for i in range(layer)])
-        self.network.append([Neuron(inputs = self.network[-1], layer = "o")])
+            self.network.append([Neuron(inputs = np.array([self.network[-1]])) for i in range(layer)])
+        self.network.append([Neuron(inputs = np.array([self.network[-1]]), layer = "o")])
 
     def make_prediction(self):
         return self.network[-1][0].recursive_output_calc()
