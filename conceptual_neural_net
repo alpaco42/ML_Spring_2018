@@ -6,7 +6,7 @@ class Neuron:
 
     @staticmethod
     def relu(array):
-        return np.maximum(array, 0)
+        return np.maximum(array, array / 100) #this is actually leaky relu
 
     @staticmethod
     def sigmoid(array):
@@ -18,47 +18,60 @@ class Neuron:
             len(weights)
             self.weights = weights
         except TypeError:
-            self.weights = np.array([[random.random() - 0.5 for i in range(inputs.shape[1])]])
+            self.weights = np.array([[random.random() / 10.0 for i in range(inputs.shape[1])]])
         if layer == "h":
             self.act_func = Neuron.relu
         elif layer == "o":
             self.act_func = Neuron.sigmoid
 
-    def recursive_output_calc(self, inputs = False): #doesn't like that I'm using a field from the instance in here...
+    def calc_input_to_act_func(self, inputs = False): #doesn't like that I'm using a field from the instance in here...
         try:
             try:
                 # print 0, inputs
-                inputs.transpose()
-                input_to_act_func = self.weights.dot(inputs.transpose())
+                inputs.transpose() #this tests if 'inputs' is still "False"
+                return self.weights.dot(inputs.transpose())
             except AttributeError:
                 # print 1, self.inputs
-                input_to_act_func = self.weights.dot(self.inputs.transpose())
-            return self.act_func(input_to_act_func)
+                return self.weights.dot(self.inputs.transpose())
         except TypeError: #this identifies if the inputs are neurons or actual numbers
             # print 2, inputs, self
             try:
-                inputs.transpose()
-                new_inputs = np.array([[neuron.recursive_output_calc() for neuron in inputs[0]]])
+                inputs.transpose() #this tests if 'inputs' is still "False"
+                new_inputs = np.array([[neuron.calc_output() for neuron in inputs[0]]])
             except AttributeError:
                 # print 3, self.inputs
-                new_inputs = np.array([[neuron.recursive_output_calc() for neuron in self.inputs[0]]])
-            return self.recursive_output_calc(inputs = new_inputs)
+                new_inputs = np.array([[neuron.calc_output() for neuron in self.inputs[0]]])
+            return self.calc_input_to_act_func(inputs = new_inputs)
+
+    def calc_output(self):
+        return self.act_func(self.calc_input_to_act_func())
 
 
-
-    # def derivative(self):
 
 class NeuralNet:
+
+
 
     def __init__(self, X, y, network_structure):
         """network_structure should be a list whose length is the number of hidden layers
         and whose ith entry is the desired number of neurons in the ith hidden layer
         as of now, this only works for X = single datapoint"""
-
+        if X.shape[0] != y.shape[0]:
+            raise RuntimeError("dataset flawed: y does not match X")
+        self.y = y
+        self.network_structure = network_structure
         self.network = [[Neuron(inputs = X) for i in range(network_structure[0])]]
         for layer in network_structure[1:]:
             self.network.append([Neuron(inputs = np.array([self.network[-1]])) for i in range(layer)])
         self.network.append([Neuron(inputs = np.array([self.network[-1]]), layer = "o")])
 
     def make_prediction(self):
-        return self.network[-1][0].recursive_output_calc()
+        return self.network[-1][0].calc_output()
+
+    def __calc_error(self):
+        return sum((self.y - self.make_prediction())**2) / (2.0 * len(self.y))
+
+    def __calc_derivatives():
+        derivatives = [["tbd" for i in range(self.network_structure[j])] for j in range(len(self.network_structure))]
+        y_prime = self.make_prediction()
+        derivatives[-1][0] = sum(y_prime - self.y) * y_prime
