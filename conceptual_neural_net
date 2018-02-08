@@ -2,15 +2,39 @@ from __future__ import division
 import numpy as np
 import random
 
+def relu_func(i):
+    return np.maximum(i, i / 100) #this is actually leaky relu
+
+def relu_der(i):
+    try:
+        if i < 0:
+            return 1 / 100
+        else:
+            return 1
+    except ValueError:
+        der = []
+        for j in i:
+            if j[0] < 0:
+                der.append([1 / 100])
+            else:
+                der.append(1)
+        return np.array(der)
+
+def sig_func(i):
+    return 1 / (1 + np.exp(-1 * i))
+
+def sig_der(i):
+    return i * (1 - i)
+
+
+class ActivationFunction:
+    def __init__(self, function, derivative):
+        self.compute = function
+        self.derivative = derivative
+
 class Neuron:
-
-    @staticmethod
-    def relu(array):
-        return np.maximum(array, array / 100) #this is actually leaky relu
-
-    @staticmethod
-    def sigmoid(array):
-        return 1 / (1 + np.exp(-1 * array))
+    relu = ActivationFunction(relu_func, relu_der)
+    sigmoid = ActivationFunction(sig_func, sig_der)
 
     def __init__(self, inputs, weights = False, layer = "h"):
         self.inputs = inputs
@@ -29,7 +53,7 @@ class Neuron:
             try:
                 # print 0, inputs
                 inputs.transpose() #this tests if 'inputs' is still "False"
-                return self.weights.dot(inputs.transpose())
+                return self.weights.dot(inputs.transpose()).reshape(self.weights.shape)
             except AttributeError:
                 # print 1, self.inputs
                 return self.weights.dot(self.inputs.transpose())
@@ -44,8 +68,7 @@ class Neuron:
             return self.calc_input_to_act_func(inputs = new_inputs)
 
     def calc_output(self):
-        return self.act_func(self.calc_input_to_act_func())
-
+        return self.act_func.compute(self.calc_input_to_act_func())
 
 
 class NeuralNet:
@@ -66,12 +89,26 @@ class NeuralNet:
         self.network.append([Neuron(inputs = np.array([self.network[-1]]), layer = "o")])
 
     def make_prediction(self):
-        return self.network[-1][0].calc_output()
+        return self.network[-1][0].calc_output().reshape(self.y.shape)
 
-    def __calc_error(self):
+    def calc_error(self):
         return sum((self.y - self.make_prediction())**2) / (2.0 * len(self.y))
 
-    def __calc_derivatives():
-        derivatives = [["tbd" for i in range(self.network_structure[j])] for j in range(len(self.network_structure))]
+    def calc_derivatives(self):
+        base_derivatives = [["tbd" for j in range(self.network_structure[i])] \
+        for i in range(len(self.network_structure))] + [["tbd"]]
         y_prime = self.make_prediction()
-        derivatives[-1][0] = sum(y_prime - self.y) * y_prime
+        dE_dout = sum(y_prime - self.y)
+        dout_din = self.network[-1][0].act_func.derivative(y_prime)
+        base_derivatives[-1][0] =  dE_dout * dout_din
+        for i in range(len(base_derivatives) - 2, -1, -1):
+            for j in range(len(base_derivatives[i])):
+                dE_dout = 0
+                for neuron in range(len(base_derivatives[i + 1])): #naming convention here uses 'i' and 'o' for in and out
+                    din_di = self.network[i + 1][neuron].weights[0][j]  # of the neuron in question and 'in' and 'out'  for
+                    dE_dout += din_di * base_derivatives[i + 1][neuron]  #neurons in the next layer
+                do_di = self.network[i][j].act_func.derivative(self.network[i][j].calc_output())
+                base_derivatives[i][j] = dE_dout * do_di
+        return base_derivatives
+
+A = NeuralNet(np.array([[1,2,3],[2,3,4]]), np.array([[1],[2]]), [2,2])
