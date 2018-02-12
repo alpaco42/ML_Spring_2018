@@ -37,6 +37,8 @@ class Neuron:
     sigmoid = ActivationFunction(sig_func, sig_der)
 
     def __init__(self, inputs, weights = False, layer = "h"):
+        print inputs.shape, inputs
+        self.dataset_size = inputs.shape[1]
         self.inputs = inputs
         try:
             len(weights)
@@ -53,7 +55,8 @@ class Neuron:
             try:
                 # print 0, inputs
                 inputs.transpose() #this tests if 'inputs' is still "False"
-                return self.weights.dot(inputs.transpose()).reshape(self.weights.shape)
+                print self.weights, self.inputs, (1,self.dataset_size)
+                return self.weights.dot(inputs.transpose()).reshape((1,self.dataset_size))
             except AttributeError:
                 # print 1, self.inputs
                 return self.weights.dot(self.inputs.transpose())
@@ -75,13 +78,14 @@ class NeuralNet:
 
 
 
-    def __init__(self, X, y, network_structure):
+    def __init__(self, X, y, network_structure, lmda = 0.1):
         """network_structure should be a list whose length is the number of hidden layers
         and whose ith entry is the desired number of neurons in the ith hidden layer
         as of now, this only works for X = single datapoint"""
         if X.shape[0] != y.shape[0]:
             raise RuntimeError("dataset flawed: y does not match X")
         self.y = y
+        self.lmda = lmda
         self.network_structure = network_structure
         self.network = [[Neuron(inputs = X) for i in range(network_structure[0])]]
         for layer in network_structure[1:]:
@@ -94,12 +98,12 @@ class NeuralNet:
     def calc_error(self):
         return sum((self.y - self.make_prediction())**2) / (2.0 * len(self.y))
 
-    def calc_derivatives(self):
+    def __backprop(self):
         base_derivatives = [["tbd" for j in range(self.network_structure[i])] \
         for i in range(len(self.network_structure))] + [["tbd"]]
         y_prime = self.make_prediction()
         dE_dout = sum(y_prime - self.y)
-        dout_din = self.network[-1][0].act_func.derivative(y_prime)
+        dout_din = np.mean(self.network[-1][0].act_func.derivative(y_prime))
         base_derivatives[-1][0] =  dE_dout * dout_din
         for i in range(len(base_derivatives) - 2, -1, -1):
             for j in range(len(base_derivatives[i])):
@@ -107,8 +111,24 @@ class NeuralNet:
                 for neuron in range(len(base_derivatives[i + 1])): #naming convention here uses 'i' and 'o' for in and out
                     din_di = self.network[i + 1][neuron].weights[0][j]  # of the neuron in question and 'in' and 'out'  for
                     dE_dout += din_di * base_derivatives[i + 1][neuron]  #neurons in the next layer
-                do_di = self.network[i][j].act_func.derivative(self.network[i][j].calc_output())
+                do_di = np.mean(self.network[i][j].act_func.derivative(self.network[i][j].calc_output()))
                 base_derivatives[i][j] = dE_dout * do_di
-        return base_derivatives
+                for weight in range(self.network[i][j].weights.shape[1]): #note that we can change weights as we go here only
+                    if i != 0:                                  # because we go front-to-back, meaning these weights
+                        self.network[i][j].weights[0][weight] -= self.lmda * np.mean(self.network[i - 1][weight] \
+                        .calc_output()) * base_derivatives[i][j]#aren't used again while calculating the other gradients
+                    else:
+                        self.network[i][j].weights[0][weight] -= self.lmda * np.mean(self.network[i][j].inputs \
+                        .transpose()[weight]) * base_derivatives[i][j]
+
+    def train(self, iterations = 300):
+        for i in range(iterations):
+            self.__backprop()
+
+        # full_derivatives = [[["tbd" for weight in len(self.network[layer][neuron].shape[1])] for neuron in \
+        # len(self.network[layer])] for layer ]
+
+
 
 A = NeuralNet(np.array([[1,2,3],[2,3,4]]), np.array([[1],[2]]), [2,2])
+B = NeuralNet(np.array([[1,1],[1,0]]), np.array([[0],[1]]), [2,2])
