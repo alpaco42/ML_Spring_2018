@@ -36,9 +36,8 @@ class Neuron:
     relu = ActivationFunction(relu_func, relu_der)
     sigmoid = ActivationFunction(sig_func, sig_der)
 
-    def __init__(self, inputs, weights = False, layer = "h"):
-        print inputs.shape, inputs
-        self.dataset_size = inputs.shape[1]
+    def __init__(self, inputs, dataset_size, weights = False, layer = "h"):
+        self.dataset_size = dataset_size
         self.inputs = inputs
         try:
             len(weights)
@@ -50,17 +49,17 @@ class Neuron:
         elif layer == "o":
             self.act_func = Neuron.sigmoid
 
-    def calc_input_to_act_func(self, inputs = False): #doesn't like that I'm using a field from the instance in here...
+    def __calc_input_to_act_func(self, inputs = False): #doesn't like that I'm using a field from the instance in here...
         try:
             try:
                 # print 0, inputs
                 inputs.transpose() #this tests if 'inputs' is still "False"
-                print self.weights, self.inputs, (1,self.dataset_size)
+                # print self.weights, self.inputs.transpose(), self.weights.dot(inputs.transpose()), (1, self.dataset_size)
                 return self.weights.dot(inputs.transpose()).reshape((1,self.dataset_size))
             except AttributeError:
                 # print 1, self.inputs
                 return self.weights.dot(self.inputs.transpose())
-        except TypeError: #this identifies if the inputs are neurons or actual numbers
+        except TypeError, ValueError: #this identifies if the inputs are neurons or actual numbers
             # print 2, inputs, self
             try:
                 inputs.transpose() #this tests if 'inputs' is still "False"
@@ -68,17 +67,17 @@ class Neuron:
             except AttributeError:
                 # print 3, self.inputs
                 new_inputs = np.array([[neuron.calc_output() for neuron in self.inputs[0]]])
-            return self.calc_input_to_act_func(inputs = new_inputs)
+            return self.__calc_input_to_act_func(inputs = new_inputs)
 
     def calc_output(self):
-        return self.act_func.compute(self.calc_input_to_act_func())
+        return self.act_func.compute(self.__calc_input_to_act_func())
 
 
 class NeuralNet:
 
 
 
-    def __init__(self, X, y, network_structure, lmda = 0.1):
+    def __init__(self, X, y, network_structure, lmda = 10):
         """network_structure should be a list whose length is the number of hidden layers
         and whose ith entry is the desired number of neurons in the ith hidden layer
         as of now, this only works for X = single datapoint"""
@@ -87,10 +86,11 @@ class NeuralNet:
         self.y = y
         self.lmda = lmda
         self.network_structure = network_structure
-        self.network = [[Neuron(inputs = X) for i in range(network_structure[0])]]
+        self.network = [[Neuron(inputs = X, dataset_size = X.shape[0]) for i in range(network_structure[0])]]
         for layer in network_structure[1:]:
-            self.network.append([Neuron(inputs = np.array([self.network[-1]])) for i in range(layer)])
-        self.network.append([Neuron(inputs = np.array([self.network[-1]]), layer = "o")])
+            self.network.append([Neuron(inputs = np.array([self.network[-1]]), \
+            dataset_size = X.shape[0]) for i in range(layer)])
+        self.network.append([Neuron(inputs = np.array([self.network[-1]]), dataset_size = X.shape[0], layer = "o")])
 
     def make_prediction(self):
         return self.network[-1][0].calc_output().reshape(self.y.shape)
@@ -115,9 +115,11 @@ class NeuralNet:
                 base_derivatives[i][j] = dE_dout * do_di
                 for weight in range(self.network[i][j].weights.shape[1]): #note that we can change weights as we go here only
                     if i != 0:                                  # because we go front-to-back, meaning these weights
+                        print np.mean(self.network[i - 1][weight].calc_output()) * base_derivatives[i][j]
                         self.network[i][j].weights[0][weight] -= self.lmda * np.mean(self.network[i - 1][weight] \
                         .calc_output()) * base_derivatives[i][j]#aren't used again while calculating the other gradients
                     else:
+                        print np.mean(self.network[i][j].inputs.transpose()[weight]) * base_derivatives[i][j]
                         self.network[i][j].weights[0][weight] -= self.lmda * np.mean(self.network[i][j].inputs \
                         .transpose()[weight]) * base_derivatives[i][j]
 
