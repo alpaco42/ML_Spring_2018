@@ -53,7 +53,7 @@ synapse_1_update = np.zeros_like(synapse_1)
 synapse_h_update = np.zeros_like(synapse_h)
 
 # training logic
-for j in range(700000):
+for j in range(70000):
 
     # generate a simple addition problem (a + b = c)
     a_int = np.random.randint(largest_number/2) # int version
