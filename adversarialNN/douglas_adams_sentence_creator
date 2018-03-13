@@ -1,0 +1,20 @@
+#data: http://www.clearwhitelight.org/hitch/hhgttg.txt
+import copy, numpy as np
+data = open("HHGG.txt").read().lower().replace("\n", " ")
+unwanted = set()
+for char in data:
+    if char not in "qwertyuiopasdfghjklzxcvbnm .":
+        unwanted.add(char)
+for char in unwanted:
+    data = data.replace(char, "")
+data = data.split(".")
+data = [sentence.split(" ") for sentence in data]
+print (len(data))
+data[0] = data[0][28:] #removes the text at the beginning of the file before the book starts
+for sentence in range(len(data)-1, -1, -1):
+    for word in range(len(data[sentence])-1,-1,-1):
+        if len(data[sentence][word]) == 0:
+            data[sentence].pop(word)
+    if len(data[sentence]) == 0:
+        data.pop(sentence)
+print (len(data))
